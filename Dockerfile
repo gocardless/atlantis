@@ -1,3 +1,9 @@
+# Build Go binary without cgo dependencies
+FROM golang:1.11 as builder
+WORKDIR /go/src/github.com/runatlantis/atlantis
+COPY . /go/src/github.com/runatlantis/atlantis
+RUN CGO_ENABLED=0 go build -o atlantis main.go
+
 # The runatlantis/atlantis-base is created by docker-base/Dockerfile.
 FROM runatlantis/atlantis-base:v2.0
 LABEL authors="Anubhav Mishra, Luke Kysow"
@@ -20,7 +26,7 @@ RUN AVAILABLE_TERRAFORM_VERSIONS="0.8.8 0.9.11 0.10.8 ${DEFAULT_TERRAFORM_VERSIO
     ln -s /usr/local/bin/tf/versions/${DEFAULT_TERRAFORM_VERSION}/terraform /usr/local/bin/terraform
 
 # copy binary
-COPY atlantis /usr/local/bin/atlantis
+COPY --from=builder /go/src/github.com/runatlantis/atlantis/atlantis /usr/local/bin/atlantis
 
 # copy docker entrypoint
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
