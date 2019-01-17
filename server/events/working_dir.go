@@ -157,7 +157,7 @@ func (w *FileWorkspace) forceClone(log *logging.SimpleLogger,
 	} else {
 		cmds = [][]string{
 			{
-				"git", "clone", "--branch", p.HeadBranch, "--depth=1", "--single-branch", headCloneURL, cloneDir,
+				"git", "clone", "--branch", p.HeadBranch /* , "--depth=1", "--single-branch" */, headCloneURL, cloneDir,
 			},
 		}
 	}

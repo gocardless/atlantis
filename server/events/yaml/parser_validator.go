@@ -29,6 +29,11 @@ func (p *ParserValidator) ReadConfig(repoDir, branch string) (valid.Config, erro
 
 	if branch != "" {
 		fmt.Println("lawson: about to git exec")
+
+		gitRemotes := exec.Command("git", "remote", "-v")
+		gitRemotes.Stdout, gitRemotes.Stderr = os.Stdout, os.Stderr
+		gitRemotes.Run()
+
 		gitShow := exec.Command("git", "--git-dir", filepath.Join(repoDir, ".git"),
 			"show", fmt.Sprintf("%s:%s", branch, AtlantisYAMLFilename),
 		)

@@ -81,8 +81,9 @@ var stringFlags = []stringFlag{
 		description: "URL that Atlantis can be reached at. Defaults to http://$(hostname):$port where $port is from --" + PortFlag + ". Supports a base path ex. https://example.com/basepath.",
 	},
 	{
-		name:        AtlantisConfigBranch,
-		description: "The repository branch that is used to source the atlantis.yaml for each atlantis run, e.g., 'master'.",
+		name:         AtlantisConfigBranch,
+		description:  "The repository branch that is used to source the atlantis.yaml for each atlantis run, e.g., 'master'.",
+		defaultValue: "HEAD",
 	},
 	{
 		name:        BitbucketUserFlag,
