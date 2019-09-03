@@ -3,7 +3,7 @@ FROM golang:1.12 as builder
 WORKDIR /go/src/github.com/runatlantis/atlantis
 COPY . /go/src/github.com/runatlantis/atlantis
 RUN CGO_ENABLED=0 go build -o atlantis main.go
-FROM runatlantis/atlantis-base:v3.0
+FROM runatlantis/atlantis-base:v3.1
 LABEL authors="Anubhav Mishra, Luke Kysow"
 
 # install terraform binaries
