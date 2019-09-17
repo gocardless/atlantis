@@ -23,6 +23,7 @@ const AllowedOverridesKey = "allowed_overrides"
 const AllowCustomWorkflowsKey = "allow_custom_workflows"
 const DefaultWorkflowName = "default"
 const DeleteSourceBranchOnMergeKey = "delete_source_branch_on_merge"
+const ConfigSourceBranchKey = "config_source_branch"
 const RepoLockingKey = "repo_locking"
 
 // DefaultAtlantisFile is the default name of the config file for each repo.
@@ -77,6 +78,9 @@ type Repo struct {
 	AllowCustomWorkflows      *bool
 	DeleteSourceBranchOnMerge *bool
 	RepoLocking               *bool
+	// ConfigSourceBranch specifies the branch that we'll use to checkout the atlantis repo
+	// configuration
+	ConfigSourceBranch *string
 }
 
 type MergedProjectCfg struct {
@@ -512,7 +516,7 @@ func (g GlobalCfg) getMatchingCfg(log logging.SimpleLogging, repoID string) (app
 		return fmt.Sprintf("setting %s: %s from %s", key, valStr, from)
 	}
 
-	for _, key := range []string{ApplyRequirementsKey, ImportRequirementsKey, WorkflowKey, AllowedOverridesKey, AllowCustomWorkflowsKey, DeleteSourceBranchOnMergeKey, RepoLockingKey} {
+	for _, key := range []string{ApplyRequirementsKey, ImportRequirementsKey, WorkflowKey, AllowedOverridesKey, AllowCustomWorkflowsKey, DeleteSourceBranchOnMergeKey, RepoLockingKey, ConfigSourceBranchKey} {
 		for i, repo := range g.Repos {
 			if repo.IDMatches(repoID) {
 				switch key {
@@ -550,6 +554,11 @@ func (g GlobalCfg) getMatchingCfg(log logging.SimpleLogging, repoID string) (app
 					if repo.RepoLocking != nil {
 						toLog[RepoLockingKey] = traceF(i, repo.IDString(), RepoLockingKey, *repo.RepoLocking)
 						repoLocking = *repo.RepoLocking
+					}
+				case ConfigSourceBranchKey:
+					if repo.ConfigSourceBranch != nil {
+						toLog[ConfigSourceBranchKey] = traceF(i, repo.IDString(), ConfigSourceBranchKey, *repo.ConfigSourceBranch)
+						configSourceBranch = repo.ConfigSourceBranch
 					}
 				}
 			}
