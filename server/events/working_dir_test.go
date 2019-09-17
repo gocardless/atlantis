@@ -43,7 +43,7 @@ func TestClone_NoneExisting(t *testing.T) {
 	cloneDir, _, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-	}, "default")
+	}, "default", []string{})
 	Ok(t, err)
 
 	// Use rev-parse to verify at correct commit.
@@ -92,15 +92,15 @@ func TestClone_CheckoutMergeNoneExisting(t *testing.T) {
 	cloneDir, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "main",
-	}, "default")
+		BaseBranch: "master",
+	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
 
 	// Check the commits.
 	actBaseCommit := runCmd(t, cloneDir, "git", "rev-parse", "HEAD~1")
 	actHeadCommit := runCmd(t, cloneDir, "git", "rev-parse", "HEAD^2")
-	Equals(t, mainCommit, actBaseCommit)
+	Equals(t, masterCommit, actBaseCommit)
 	Equals(t, branchCommit, actHeadCommit)
 
 	// Use ls to verify the repo looks good.
@@ -112,19 +112,20 @@ func TestClone_CheckoutMergeNoneExisting(t *testing.T) {
 // the right commit, then we don't reclone.
 func TestClone_CheckoutMergeNoReclone(t *testing.T) {
 	// Initialize the git repo.
-	repoDir := initRepo(t)
+	repoDir, cleanup := initRepo(t)
+	defer cleanup()
 
-	// Add a commit to branch 'branch' that's not on main.
+	// Add a commit to branch 'branch' that's not on master.
 	runCmd(t, repoDir, "git", "checkout", "branch")
 	runCmd(t, repoDir, "touch", "branch-file")
 	runCmd(t, repoDir, "git", "add", "branch-file")
 	runCmd(t, repoDir, "git", "commit", "-m", "branch-commit")
 
-	// Now switch back to main and advance the main branch by another commit.
-	runCmd(t, repoDir, "git", "checkout", "main")
-	runCmd(t, repoDir, "touch", "main-file")
-	runCmd(t, repoDir, "git", "add", "main-file")
-	runCmd(t, repoDir, "git", "commit", "-m", "main-commit")
+	// Now switch back to master and advance the master branch by another commit.
+	runCmd(t, repoDir, "git", "checkout", "master")
+	runCmd(t, repoDir, "touch", "master-file")
+	runCmd(t, repoDir, "git", "add", "master-file")
+	runCmd(t, repoDir, "git", "commit", "-m", "master-commit")
 
 	// Run the clone for the first time.
 	dataDir := t.TempDir()
@@ -140,8 +141,8 @@ func TestClone_CheckoutMergeNoReclone(t *testing.T) {
 	_, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "main",
-	}, "default")
+		BaseBranch: "master",
+	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
 
@@ -152,8 +153,8 @@ func TestClone_CheckoutMergeNoReclone(t *testing.T) {
 	cloneDir, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "main",
-	}, "default")
+		BaseBranch: "master",
+	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
 
@@ -189,8 +190,8 @@ func TestClone_CheckoutMergeNoRecloneFastForward(t *testing.T) {
 	_, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "main",
-	}, "default")
+		BaseBranch: "master",
+	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
 
@@ -201,8 +202,8 @@ func TestClone_CheckoutMergeNoRecloneFastForward(t *testing.T) {
 	cloneDir, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "main",
-	}, "default")
+		BaseBranch: "master",
+	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
 
@@ -243,8 +244,8 @@ func TestClone_CheckoutMergeConflict(t *testing.T) {
 	_, _, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "main",
-	}, "default")
+		BaseBranch: "master",
+	}, "default", []string{})
 
 	ErrContains(t, "running git merge -q --no-ff -m atlantis-merge FETCH_HEAD", err)
 	ErrContains(t, "Auto-merging file", err)
@@ -274,7 +275,7 @@ func TestClone_NoReclone(t *testing.T) {
 	cloneDir, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-	}, "default")
+	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
 
@@ -310,7 +311,7 @@ func TestClone_RecloneWrongCommit(t *testing.T) {
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
 		HeadCommit: expCommit,
-	}, "default")
+	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
 
@@ -377,8 +378,8 @@ func TestClone_MasterHasDiverged(t *testing.T) {
 	_, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{CloneURL: repoDir}, models.PullRequest{
 		BaseRepo:   models.Repo{CloneURL: repoDir},
 		HeadBranch: "second-pr",
-		BaseBranch: "main",
-	}, "default")
+		BaseBranch: "master",
+	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, hasDiverged, true)
 
@@ -388,8 +389,8 @@ func TestClone_MasterHasDiverged(t *testing.T) {
 	_, hasDiverged, err = wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "second-pr",
-		BaseBranch: "main",
-	}, "default")
+		BaseBranch: "master",
+	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, hasDiverged, false)
 }
