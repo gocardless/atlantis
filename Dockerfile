@@ -5,7 +5,7 @@ COPY . /go/src/github.com/runatlantis/atlantis
 RUN GO111MODULE=off CGO_ENABLED=0 go build -o atlantis main.go
 
 # The runatlantis/atlantis-base is created by docker-base/Dockerfile.
-FROM runatlantis/atlantis-base:v3.1
+FROM runatlantis/atlantis-base:v3.2
 LABEL authors="Anubhav Mishra, Luke Kysow"
 
 # install terraform binaries
