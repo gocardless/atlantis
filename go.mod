@@ -21,7 +21,7 @@ require (
 	github.com/google/go-github/v28 v28.0.0
 	github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c // indirect
 	github.com/gorilla/context v0.0.0-20160226214623-1ea25387ff6f // indirect
-	github.com/gorilla/mux v1.6.2
+	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/errwrap v0.0.0-20141028054710-7554cd9344ce // indirect
 	github.com/hashicorp/go-getter v1.2.0
 	github.com/hashicorp/go-multierror v0.0.0-20170622060955-83588e72410a
