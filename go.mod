@@ -42,7 +42,7 @@ require (
 	github.com/onsi/gomega v1.2.0 // indirect
 	github.com/pelletier/go-buffruneio v0.2.0 // indirect
 	github.com/pelletier/go-toml v1.0.0 // indirect
-	github.com/petergtz/pegomock v2.5.0+incompatible
+	github.com/petergtz/pegomock v2.7.0+incompatible
 	github.com/pkg/errors v0.8.0
 	github.com/spf13/afero v0.0.0-20170901052352-ee1bd8ee15a1 // indirect
 	github.com/spf13/cast v1.1.0 // indirect
