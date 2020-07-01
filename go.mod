@@ -48,7 +48,7 @@ require (
 	github.com/spf13/cast v1.1.0 // indirect
 	github.com/spf13/cobra v0.0.0-20170905172051-b78744579491
 	github.com/spf13/jwalterweatherman v0.0.0-20170901151539-12bd96e66386 // indirect
-	github.com/spf13/pflag v1.0.0
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.0.0
 	github.com/ulikunitz/xz v0.5.6 // indirect
 	github.com/urfave/cli v1.20.0
