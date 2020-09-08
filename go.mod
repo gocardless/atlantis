@@ -41,7 +41,7 @@ require (
 	github.com/mitchellh/go-homedir v1.0.0
 	github.com/mitchellh/mapstructure v0.0.0-20170523030023-d0303fe80992 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
-	github.com/nlopes/slack v0.1.0
+	github.com/nlopes/slack v0.6.0
 	github.com/onsi/ginkgo v1.9.0 // indirect
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/pelletier/go-buffruneio v0.2.0 // indirect
