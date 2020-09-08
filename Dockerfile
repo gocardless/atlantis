@@ -2,7 +2,7 @@
 FROM golang:1.14 as builder
 WORKDIR /go/src/github.com/runatlantis/atlantis
 COPY . /go/src/github.com/runatlantis/atlantis
-RUN GO111MODULE=off CGO_ENABLED=0 go build -o atlantis main.go
+RUN CGO_ENABLED=0 go build -o atlantis main.go
 
 # The runatlantis/atlantis-base is created by docker-base/Dockerfile.
 FROM runatlantis/atlantis-base:v3.5
