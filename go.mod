@@ -59,7 +59,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.0.0
 	github.com/ulikunitz/xz v0.5.6 // indirect
-	github.com/urfave/cli v1.20.0
+	github.com/urfave/cli v1.22.5
 	github.com/urfave/negroni v0.2.0
 	github.com/xanzy/go-gitlab v0.34.1
 	github.com/zclconf/go-cty v1.5.1 // indirect
