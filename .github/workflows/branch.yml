@@ -1,0 +1,73 @@
+name: gocardless/atlantis/branch
+on:
+  push:
+    branches:
+    - master
+jobs:
+  test:
+    if: ${{ !contains('refs/heads//.*-docs/', github.ref) }}
+    runs-on: ubuntu-latest
+    container:
+      image: runatlantis/testing-env:latest
+      env:
+        GOFLAGS: "-mod=vendor"
+    steps:
+    - uses: actions/checkout@v2
+    - run: make test-coverage
+    - name: post coverage to codecov.io
+      run: bash <(curl -s https://codecov.io/bash)
+    - run: make check-fmt
+    - run: make check-lint
+  e2e:
+    if: ${{ !contains('refs/heads//.*-docs/', github.ref) }}
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.14
+      env:
+        TERRAFORM_VERSION: 0.13.2
+    needs:
+    - test
+    steps:
+    - uses: actions/checkout@v2
+    - run: make build-service
+    - run: if [ -z "${{ github.repository }}" ]; then ./scripts/e2e.sh; fi
+  docker_master:
+    if: contains('refs/heads/master', github.ref)
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.14
+      env:
+        GOFLAGS: "-mod=vendor"
+    needs:
+    - e2e
+    steps:
+    - uses: actions/checkout@v2
+    - run: make build-service
+#     # 'setup_remote_docker' was not transformed because there is no suitable equivalent in GitHub Actions
+    - name: Build image
+      run: |-
+        if [ "${{ github.ref }}" == "master" ]; then
+          docker build -t runatlantis/atlantis:latest .
+        fi
+    - name: Push image
+      run: |-
+        if [ "${{ github.ref }}" == "master" ]; then
+          docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
+          docker push runatlantis/atlantis:latest
+        fi
+  website_link_check:
+    runs-on: ubuntu-latest
+    container:
+      image: runatlantis/ci-link-checker:0.1
+    steps:
+    - uses: actions/checkout@v2
+    - run: yarn install
+    - run: yarn website:build
+    - name: http-server
+      run: http-server runatlantis.io/.vuepress/dist
+    - run: |
+        dockerize -wait tcp://localhost:8080 -- \
+          muffet \
+            -e 'https://github\.com/runatlantis/atlantis/edit/master/.*' \
+            -e 'https://github.com/helm/charts/tree/master/stable/atlantis#customization' \
+            http://localhost:8080/
