@@ -41,7 +41,7 @@ type WorkingDir interface {
 	// absolute path to the root of the cloned repo. It also returns
 	// a boolean indicating if we should warn users that the branch we're
 	// merging into has been updated since we cloned it.
-	Clone(headRepo models.Repo, p models.PullRequest, workspace string) (string, bool, error)
+	Clone(headRepo models.Repo, p models.PullRequest, workspace string, additionalBranches []string) (string, bool, error)
 	// GetWorkingDir returns the path to the workspace for this repo and pull.
 	// If workspace does not exist on disk, error will be of type os.IsNotExist.
 	GetWorkingDir(r models.Repo, p models.PullRequest, workspace string) (string, error)
@@ -58,6 +58,8 @@ type WorkingDir interface {
 	DeletePlan(r models.Repo, p models.PullRequest, workspace string, path string, projectName string) error
 	// GetGitUntrackedFiles returns a list of Git untracked files in the working dir.
 	GetGitUntrackedFiles(r models.Repo, p models.PullRequest, workspace string) ([]string, error)
+	// CheckoutFile checks out a file from a specified branch
+	CheckoutFile(branch string, file string, repoDir string) error
 }
 
 // FileWorkspace implements WorkingDir with the file system.
@@ -145,8 +147,34 @@ func (w *FileWorkspace) Clone(
 		// We'll fall through to re-clone.
 	}
 
+	if err := w.forceClone(c); err != nil {
+		return cloneDir, false, err
+	}
+
+	for _, branch := range additionalBranches {
+		if _, err := w.fetchBranch(cloneDir, branch); err != nil {
+			return cloneDir, false, err
+		}
+	}
+
 	// Otherwise we clone the repo.
-	return cloneDir, false, w.forceClone(c)
+	return cloneDir, false, nil
+}
+
+// fetchBranch causes the repository to fetch the most recent version of the given branch
+// in a shallow fashion. This ensures we can access files from this branch, enabling later
+// reading of files from this revision.
+func (w *FileWorkspace) fetchBranch(cloneDir, branch string) (string, error) {
+	w.Logger.Debug("fetching branch %s into repository %s", branch, cloneDir)
+
+	fetchCmd := exec.Command("git", "fetch", "--depth=1", "origin", fmt.Sprintf("+refs/heads/%s:refs/remotes/origin/%s", branch, branch)) // nolint: gosec
+	fetchCmd.Dir = cloneDir
+	output, err := fetchCmd.CombinedOutput()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to fetch base branch %s: %s", branch, string(output))
+	}
+
+	return cloneDir, err
 }
 
 // recheckDiverged returns true if the branch we're merging into has diverged
@@ -450,4 +478,15 @@ func (w *FileWorkspace) GetGitUntrackedFiles(r models.Repo, p models.PullRequest
 	untrackedFiles := strings.Split(string(output), "\n")[:]
 	w.Logger.Debug("Untracked files: '%s'", strings.Join(untrackedFiles, ","))
 	return untrackedFiles, nil
+}
+
+func (w *FileWorkspace) CheckoutFile(repoDir string, branch string, file string) error {
+	w.Logger.Debug("checking out %s from repos config source branch %s", file, branch)
+	checkoutCmd := exec.Command("git", "checkout", fmt.Sprintf("origin/%s", branch), "--", file) // nolint: gosec
+	checkoutCmd.Dir = repoDir
+	output, err := checkoutCmd.CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, "failed to checkout %s from branch %s in %s: %s", file, branch, repoDir, string(output))
+	}
+	return nil
 }
