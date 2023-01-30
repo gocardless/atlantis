@@ -5,7 +5,7 @@ on:
     branches:
       - 'main'
       - 'release-**'
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - reopened
@@ -14,6 +14,8 @@ on:
     branches:
       - 'main'
       - 'release-**'
+  workflow_dispatch:
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -23,7 +25,7 @@ jobs:
   changes:
     outputs:
       should-run-tests: ${{ steps.changes.outputs.go == 'true' }}
-    if: github.event.pull_request.draft == false
+    if: github.event.pull_request_target.draft == false
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
