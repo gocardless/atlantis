@@ -84,6 +84,10 @@ repos:
   # policy_check defines if policy checking should be enable on this repository.
   policy_check: false
 
+  # config_source_branch specifies the branch that we'll use to checkout the atlantis repo
+  # configuration
+  config_source_branch: custom
+
   # id can also be an exact match.
 - id: github.com/myorg/specific-repo
 

@@ -35,6 +35,7 @@ type Repo struct {
 	DeleteSourceBranchOnMerge *bool          `yaml:"delete_source_branch_on_merge,omitempty" json:"delete_source_branch_on_merge,omitempty"`
 	RepoLocking               *bool          `yaml:"repo_locking,omitempty" json:"repo_locking,omitempty"`
 	PolicyCheck               *bool          `yaml:"policy_check,omitempty" json:"policy_check,omitempty"`
+	ConfigSourceBranch        *string        `yaml:"config_source_branch,omitempty" json:"config_source_branch,omitempty"`
 }
 
 func (g GlobalCfg) Validate() error {
@@ -331,5 +332,6 @@ OuterGlobalImportReqs:
 		DeleteSourceBranchOnMerge: r.DeleteSourceBranchOnMerge,
 		RepoLocking:               r.RepoLocking,
 		PolicyCheck:               r.PolicyCheck,
+		ConfigSourceBranch:        r.ConfigSourceBranch,
 	}
 }

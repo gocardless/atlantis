@@ -41,7 +41,7 @@ type WorkingDir interface {
 	// absolute path to the root of the cloned repo. It also returns
 	// a boolean indicating if we should warn users that the branch we're
 	// merging into has been updated since we cloned it.
-	Clone(headRepo models.Repo, p models.PullRequest, workspace string) (string, bool, error)
+	Clone(headRepo models.Repo, p models.PullRequest, workspace string, additionalBranches []string) (string, bool, error)
 	// GetWorkingDir returns the path to the workspace for this repo and pull.
 	// If workspace does not exist on disk, error will be of type os.IsNotExist.
 	GetWorkingDir(r models.Repo, p models.PullRequest, workspace string) (string, error)
@@ -56,6 +56,8 @@ type WorkingDir interface {
 	SetSafeToReClone()
 	// DeletePlan deletes the plan for this repo, pull, workspace path and project name
 	DeletePlan(r models.Repo, p models.PullRequest, workspace string, path string, projectName string) error
+	// CheckoutFile checks out a file from a specified branch
+	CheckoutFile(branch string, file string, repoDir string) error
 }
 
 // FileWorkspace implements WorkingDir with the file system.
@@ -93,10 +95,14 @@ type FileWorkspace struct {
 // If the repo already exists and is at
 // the right commit it does nothing. This is to support running commands in
 // multiple dirs of the same repo without deleting existing plans.
+//
+// By default, our clone is shallow. If you wish to access resources from
+// commits other than the pulls base, then provide them as additionalBranches.
 func (w *FileWorkspace) Clone(
 	headRepo models.Repo,
 	p models.PullRequest,
-	workspace string) (string, bool, error) {
+	workspace string,
+	additionalBranches []string) (string, bool, error) {
 	cloneDir := w.cloneDir(p.BaseRepo, p, workspace)
 	hasDiverged := false
 	defer func() { w.SafeToReClone = false }()
@@ -140,8 +146,34 @@ func (w *FileWorkspace) Clone(
 		// We'll fall through to re-clone.
 	}
 
+	if err := w.forceClone(cloneDir, headRepo, p); err != nil {
+		return cloneDir, hasDiverged, err
+	}
+
+	for _, branch := range additionalBranches {
+		if _, err := w.fetchBranch(cloneDir, branch); err != nil {
+			return cloneDir, hasDiverged, err
+		}
+	}
+
 	// Otherwise we clone the repo.
-	return cloneDir, hasDiverged, w.forceClone(cloneDir, headRepo, p)
+	return cloneDir, hasDiverged, nil
+}
+
+// fetchBranch causes the repository to fetch the most recent version of the given branch
+// in a shallow fashion. This ensures we can access files from this branch, enabling later
+// reading of files from this revision.
+func (w *FileWorkspace) fetchBranch(cloneDir, branch string) (string, error) {
+	w.Logger.Debug("fetching branch %s into repository %s", branch, cloneDir)
+
+	fetchCmd := exec.Command("git", "fetch", "--depth=1", "origin", fmt.Sprintf("+refs/heads/%s:refs/remotes/origin/%s", branch, branch))
+	fetchCmd.Dir = cloneDir
+	output, err := fetchCmd.CombinedOutput()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to fetch base branch %s: %s", branch, string(output))
+	}
+
+	return cloneDir, err
 }
 
 // recheckDiverged returns true if the branch we're merging into has diverged
@@ -381,4 +413,15 @@ func (w *FileWorkspace) DeletePlan(r models.Repo, p models.PullRequest, workspac
 	planPath := filepath.Join(w.cloneDir(r, p, workspace), projectPath, runtime.GetPlanFilename(workspace, projectName))
 	w.Logger.Info("Deleting plan: " + planPath)
 	return os.Remove(planPath)
+}
+
+func (w *FileWorkspace) CheckoutFile(repoDir string, branch string, file string) error {
+	w.Logger.Debug("checking out %s from repos config source branch %s", file, branch)
+	checkoutCmd := exec.Command("git", "checkout", fmt.Sprintf("origin/%s", branch), "--", file)
+	checkoutCmd.Dir = repoDir
+	output, err := checkoutCmd.CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, "failed to checkout %s from branch %s in %s: %s", file, branch, repoDir, string(output))
+	}
+	return nil
 }

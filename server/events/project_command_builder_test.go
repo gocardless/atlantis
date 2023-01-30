@@ -134,7 +134,7 @@ projects:
 			})
 
 			workingDir := mocks.NewMockWorkingDir()
-			When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, false, nil)
+			When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string](), Any[[]string]())).ThenReturn(tmpDir, false, nil)
 			vcsClient := vcsmocks.NewMockClient()
 			When(vcsClient.GetModifiedFiles(Any[models.Repo](), Any[models.PullRequest]())).ThenReturn([]string{"main.tf"}, nil)
 			if c.AtlantisYAML != "" {
@@ -484,7 +484,7 @@ projects:
 				})
 
 				workingDir := mocks.NewMockWorkingDir()
-				When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, false, nil)
+				When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string](), Any[[]string]())).ThenReturn(tmpDir, false, nil)
 				When(workingDir.GetWorkingDir(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, nil)
 				vcsClient := vcsmocks.NewMockClient()
 				When(vcsClient.GetModifiedFiles(Any[models.Repo](), Any[models.PullRequest]())).ThenReturn([]string{"main.tf"}, nil)
@@ -670,7 +670,7 @@ projects:
 			tmpDir := DirStructure(t, c.DirectoryStructure)
 
 			workingDir := mocks.NewMockWorkingDir()
-			When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, false, nil)
+			When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string](), Any[[]string]())).ThenReturn(tmpDir, false, nil)
 			When(workingDir.GetWorkingDir(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, nil)
 			vcsClient := vcsmocks.NewMockClient()
 			When(vcsClient.GetModifiedFiles(Any[models.Repo](), Any[models.PullRequest]())).ThenReturn(c.ModifiedFiles, nil)
@@ -935,7 +935,7 @@ projects:
 			tmpDir := DirStructure(t, c.DirStructure)
 
 			workingDir := mocks.NewMockWorkingDir()
-			When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, false, nil)
+			When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string](), Any[[]string]())).ThenReturn(tmpDir, false, nil)
 			When(workingDir.GetWorkingDir(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, nil)
 			vcsClient := vcsmocks.NewMockClient()
 			When(vcsClient.GetModifiedFiles(Any[models.Repo](), Any[models.PullRequest]())).ThenReturn(c.ModifiedFiles, nil)
@@ -1131,7 +1131,8 @@ projects:
 	When(workingDir.Clone(
 		Any[models.Repo](),
 		Any[models.PullRequest](),
-		Any[string]())).ThenReturn(repoDir, false, nil)
+		Any[string](),
+		Any[[]string]())).ThenReturn(repoDir, false, nil)
 	When(workingDir.GetWorkingDir(
 		Any[models.Repo](),
 		Any[models.PullRequest](),
@@ -1221,7 +1222,7 @@ func TestDefaultProjectCommandBuilder_EscapeArgs(t *testing.T) {
 			})
 
 			workingDir := mocks.NewMockWorkingDir()
-			When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, false, nil)
+			When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string](), Any[[]string]())).ThenReturn(tmpDir, false, nil)
 			When(workingDir.GetWorkingDir(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, nil)
 			vcsClient := vcsmocks.NewMockClient()
 			When(vcsClient.GetModifiedFiles(Any[models.Repo](), Any[models.PullRequest]())).ThenReturn([]string{"main.tf"}, nil)
@@ -1380,7 +1381,8 @@ projects:
 			When(workingDir.Clone(
 				Any[models.Repo](),
 				Any[models.PullRequest](),
-				Any[string]())).ThenReturn(tmpDir, false, nil)
+				Any[string](),
+				Any[[]string]())).ThenReturn(tmpDir, false, nil)
 
 			When(workingDir.GetWorkingDir(
 				Any[models.Repo](),
@@ -1540,7 +1542,7 @@ parallel_plan: true`,
 		})
 		Ok(t, err)
 		Equals(t, c.ExpectedCtxs, len(actCtxs))
-		workingDir.VerifyWasCalled(c.ExpectedClones).Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string]())
+		workingDir.VerifyWasCalled(c.ExpectedClones).Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string](), Any[[]string]())
 	}
 }
 
@@ -1554,7 +1556,7 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
 	workingDir := mocks.NewMockWorkingDir()
-	When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string]())).ThenReturn(tmpDir, false, nil)
+	When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string](), Any[[]string]())).ThenReturn(tmpDir, false, nil)
 	vcsClient := vcsmocks.NewMockClient()
 	When(vcsClient.GetModifiedFiles(Any[models.Repo](), Any[models.PullRequest]())).ThenReturn([]string{"main.tf"}, nil)
 
@@ -1707,4 +1709,123 @@ func TestDefaultProjectCommandBuilder_BuildVersionCommand(t *testing.T) {
 	Equals(t, "workspace2", ctxs[2].Workspace)
 	Equals(t, "project2", ctxs[3].RepoRelDir)
 	Equals(t, "workspace2", ctxs[3].Workspace)
+}
+
+func TestDefaultProjectCommandBuilder_ConfigSourceBranch(t *testing.T) {
+	cases := []struct {
+		Description         string
+		PullReqAtlantisYAML string
+		CfgSourceBranchYAML string
+		CfgSourceBranch     string
+		ExpApplyReqs        []string
+	}{
+		{
+			Description: "config source branch is not set",
+			PullReqAtlantisYAML: `
+version: 3
+projects:
+- dir: .
+  workspace: myworkspace
+  apply_requirements: []`,
+			CfgSourceBranchYAML: `
+version: 3
+projects:
+- dir: .
+  workspace: myworkspace
+  apply_requirements: [approved]`,
+			ExpApplyReqs: []string{},
+		},
+		{
+			Description: "config source branch is set",
+			PullReqAtlantisYAML: `
+version: 3
+projects:
+- dir: .
+  workspace: myworkspace
+  apply_requirements: []`,
+			CfgSourceBranchYAML: `
+version: 3
+projects:
+- dir: .
+  workspace: myworkspace
+  apply_requirements: [approved]`,
+			CfgSourceBranch: "main",
+			ExpApplyReqs:    []string{"approved"},
+		},
+	}
+
+	logger := logging.NewNoopLogger(t)
+	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
+
+	terraformClient := terraform_mocks.NewMockClient()
+	When(terraformClient.ListAvailableVersions(Any[logging.SimpleLogging]())).ThenReturn([]string{}, nil)
+
+	for _, c := range cases {
+		t.Run(c.Description, func(t *testing.T) {
+			RegisterMockTestingT(t)
+			tmpDir := DirStructure(t, map[string]interface{}{
+				"main.tf": nil,
+			})
+
+			workingDir := mocks.NewMockWorkingDir()
+			When(workingDir.Clone(Any[models.Repo](), Any[models.PullRequest](), Any[string](), Any[[]string]())).ThenReturn(tmpDir, false, nil)
+			err := os.WriteFile(filepath.Join(tmpDir, valid.DefaultAtlantisFile), []byte(c.PullReqAtlantisYAML), 0600)
+			Ok(t, err)
+
+			if c.CfgSourceBranch != "" {
+				When(workingDir.CheckoutFile(Any[string](), Eq(c.CfgSourceBranch), Eq(valid.DefaultAtlantisFile))).Then(func(params []Param) ReturnValues {
+					err := os.WriteFile(filepath.Join(tmpDir, valid.DefaultAtlantisFile), []byte(c.CfgSourceBranchYAML), 0600)
+					Ok(t, err)
+					return nil
+				})
+			}
+			vcsClient := vcsmocks.NewMockClient()
+			When(vcsClient.GetModifiedFiles(Any[models.Repo](), Any[models.PullRequest]())).ThenReturn([]string{"main.tf"}, nil)
+
+			globalCfgArgs := valid.GlobalCfgArgs{
+				AllowRepoCfg: true,
+				MergeableReq: false,
+				ApprovedReq:  false,
+			}
+
+			if c.CfgSourceBranch != "" {
+				globalCfgArgs.ConfigSourceBranch = &c.CfgSourceBranch
+			}
+
+			builder := events.NewProjectCommandBuilder(
+				false,
+				&config.ParserValidator{},
+				&events.DefaultProjectFinder{},
+				vcsClient,
+				workingDir,
+				events.NewDefaultWorkingDirLocker(),
+				valid.NewGlobalCfgFromArgs(globalCfgArgs),
+				&events.DefaultPendingPlanFinder{},
+				&events.CommentParser{ExecutableName: "atlantis"},
+				false,
+				false,
+				false,
+				false,
+				false,
+				"",
+				"**/*.tf,**/*.tfvars,**/*.tfvars.json,**/terragrunt.hcl,**/.terraform.lock.hcl",
+				false,
+				false,
+				scope,
+				logger,
+				terraformClient,
+			)
+
+			ctxs, err := builder.BuildAutoplanCommands(&command.Context{
+				PullRequestStatus: models.PullReqStatus{
+					Mergeable: true,
+				},
+				Log:   logger,
+				Scope: scope,
+			})
+			Ok(t, err)
+			planCtx := ctxs[0]
+			Equals(t, planCtx.ApplyRequirements, c.ExpApplyReqs)
+		})
+	}
 }
