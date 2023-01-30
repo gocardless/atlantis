@@ -34,6 +34,7 @@ type Repo struct {
 	AllowCustomWorkflows      *bool          `yaml:"allow_custom_workflows,omitempty" json:"allow_custom_workflows,omitempty"`
 	DeleteSourceBranchOnMerge *bool          `yaml:"delete_source_branch_on_merge,omitempty" json:"delete_source_branch_on_merge,omitempty"`
 	RepoLocking               *bool          `yaml:"repo_locking,omitempty" json:"repo_locking,omitempty"`
+	ConfigSourceBranch        *string        `yaml:"config_source_branch,omitempty" json:"config_source_branch,omitempty"`
 }
 
 func (g GlobalCfg) Validate() error {
@@ -314,5 +315,6 @@ OuterGlobalImportReqs:
 		AllowCustomWorkflows:      r.AllowCustomWorkflows,
 		DeleteSourceBranchOnMerge: r.DeleteSourceBranchOnMerge,
 		RepoLocking:               r.RepoLocking,
+		ConfigSourceBranch:        r.ConfigSourceBranch,
 	}
 }

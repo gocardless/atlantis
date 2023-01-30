@@ -25,7 +25,7 @@ services:
         - redis
         build:
             context: .
-            dockerfile: Dockerfile.dev
+            dockerfile: _Dockerfile.dev
         ports:
         - 4141:4141
         volumes:
