@@ -722,6 +722,7 @@ func TestDefaultProjectCommandRunner_Import(t *testing.T) {
 				matchers.AnyModelsRepo(),
 				matchers.AnyModelsPullRequest(),
 				AnyString(),
+				AnyStringSlice(),
 			)).ThenReturn(repoDir, false, nil)
 			if c.setup != nil {
 				c.setup(repoDir, ctx, mockLocker, mockInit, mockImport)

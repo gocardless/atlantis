@@ -92,7 +92,7 @@ func TestClone_CheckoutMergeNoneExisting(t *testing.T) {
 	cloneDir, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "master",
+		BaseBranch: "main",
 	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
@@ -100,7 +100,7 @@ func TestClone_CheckoutMergeNoneExisting(t *testing.T) {
 	// Check the commits.
 	actBaseCommit := runCmd(t, cloneDir, "git", "rev-parse", "HEAD~1")
 	actHeadCommit := runCmd(t, cloneDir, "git", "rev-parse", "HEAD^2")
-	Equals(t, masterCommit, actBaseCommit)
+	Equals(t, mainCommit, actBaseCommit)
 	Equals(t, branchCommit, actHeadCommit)
 
 	// Use ls to verify the repo looks good.
@@ -112,8 +112,7 @@ func TestClone_CheckoutMergeNoneExisting(t *testing.T) {
 // the right commit, then we don't reclone.
 func TestClone_CheckoutMergeNoReclone(t *testing.T) {
 	// Initialize the git repo.
-	repoDir, cleanup := initRepo(t)
-	defer cleanup()
+	repoDir := initRepo(t)
 
 	// Add a commit to branch 'branch' that's not on master.
 	runCmd(t, repoDir, "git", "checkout", "branch")
@@ -122,7 +121,7 @@ func TestClone_CheckoutMergeNoReclone(t *testing.T) {
 	runCmd(t, repoDir, "git", "commit", "-m", "branch-commit")
 
 	// Now switch back to master and advance the master branch by another commit.
-	runCmd(t, repoDir, "git", "checkout", "master")
+	runCmd(t, repoDir, "git", "checkout", "main")
 	runCmd(t, repoDir, "touch", "master-file")
 	runCmd(t, repoDir, "git", "add", "master-file")
 	runCmd(t, repoDir, "git", "commit", "-m", "master-commit")
@@ -141,7 +140,7 @@ func TestClone_CheckoutMergeNoReclone(t *testing.T) {
 	_, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "master",
+		BaseBranch: "main",
 	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
@@ -153,7 +152,7 @@ func TestClone_CheckoutMergeNoReclone(t *testing.T) {
 	cloneDir, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "master",
+		BaseBranch: "main",
 	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
@@ -190,7 +189,7 @@ func TestClone_CheckoutMergeNoRecloneFastForward(t *testing.T) {
 	_, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "master",
+		BaseBranch: "main",
 	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
@@ -202,7 +201,7 @@ func TestClone_CheckoutMergeNoRecloneFastForward(t *testing.T) {
 	cloneDir, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "master",
+		BaseBranch: "main",
 	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, false, hasDiverged)
@@ -244,7 +243,7 @@ func TestClone_CheckoutMergeConflict(t *testing.T) {
 	_, _, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "branch",
-		BaseBranch: "master",
+		BaseBranch: "main",
 	}, "default", []string{})
 
 	ErrContains(t, "running git merge -q --no-ff -m atlantis-merge FETCH_HEAD", err)
@@ -378,7 +377,7 @@ func TestClone_MasterHasDiverged(t *testing.T) {
 	_, hasDiverged, err := wd.Clone(logging.NewNoopLogger(t), models.Repo{CloneURL: repoDir}, models.PullRequest{
 		BaseRepo:   models.Repo{CloneURL: repoDir},
 		HeadBranch: "second-pr",
-		BaseBranch: "master",
+		BaseBranch: "main",
 	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, hasDiverged, true)
@@ -389,7 +388,7 @@ func TestClone_MasterHasDiverged(t *testing.T) {
 	_, hasDiverged, err = wd.Clone(logging.NewNoopLogger(t), models.Repo{}, models.PullRequest{
 		BaseRepo:   models.Repo{},
 		HeadBranch: "second-pr",
-		BaseBranch: "master",
+		BaseBranch: "main",
 	}, "default", []string{})
 	Ok(t, err)
 	Equals(t, hasDiverged, false)
