@@ -605,7 +605,7 @@ projects:
 			tmpDir := DirStructure(t, c.DirectoryStructure)
 
 			workingDir := mocks.NewMockWorkingDir()
-			When(workingDir.Clone(matchers.AnyLoggingSimpleLogging(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), AnyString())).ThenReturn(tmpDir, false, nil)
+			When(workingDir.Clone(matchers.AnyLoggingSimpleLogging(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), AnyString(), AnyStringSlice())).ThenReturn(tmpDir, false, nil)
 			When(workingDir.GetWorkingDir(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), AnyString())).ThenReturn(tmpDir, nil)
 			vcsClient := vcsmocks.NewMockClient()
 			When(vcsClient.GetModifiedFiles(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn(c.ModifiedFiles, nil)
@@ -1396,7 +1396,7 @@ func TestDefaultProjectCommandBuilder_WithPolicyCheckEnabled_BuildAutoplanComman
 	scope, _, _ := metrics.NewLoggingScope(logger, "atlantis")
 
 	workingDir := mocks.NewMockWorkingDir()
-	When(workingDir.Clone(matchers.AnyLoggingSimpleLogging(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), AnyString())).ThenReturn(tmpDir, false, nil)
+	When(workingDir.Clone(matchers.AnyLoggingSimpleLogging(), matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest(), AnyString(), AnyStringSlice())).ThenReturn(tmpDir, false, nil)
 	vcsClient := vcsmocks.NewMockClient()
 	When(vcsClient.GetModifiedFiles(matchers.AnyModelsRepo(), matchers.AnyModelsPullRequest())).ThenReturn([]string{"main.tf"}, nil)
 

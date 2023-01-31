@@ -90,11 +90,11 @@ func TestClone_GithubAppSetsCorrectUrl(t *testing.T) {
 	modifiedBaseRepo.SanitizedCloneURL = "https://github.com/runatlantis/atlantis.git"
 
 	When(credentials.GetToken()).ThenReturn("token", nil)
-	When(workingDir.Clone(logger, modifiedBaseRepo, models.PullRequest{BaseRepo: modifiedBaseRepo}, "default")).ThenReturn(
+	When(workingDir.Clone(logger, modifiedBaseRepo, models.PullRequest{BaseRepo: modifiedBaseRepo}, "default", []string{})).ThenReturn(
 		"", true, nil,
 	)
 
-	_, success, _ := ghAppWorkingDir.Clone(logger, headRepo, models.PullRequest{BaseRepo: baseRepo}, "default")
+	_, success, _ := ghAppWorkingDir.Clone(logger, headRepo, models.PullRequest{BaseRepo: baseRepo}, "default", []string{})
 
 	workingDir.VerifyWasCalledOnce().Clone(logger, modifiedBaseRepo, models.PullRequest{BaseRepo: modifiedBaseRepo}, "default")
 
