@@ -34,6 +34,10 @@ FROM ${ATLANTIS_BASE}:${ATLANTIS_BASE_TAG_DATE}-${ATLANTIS_BASE_TAG_TYPE} AS bas
 # Get the architecture the image is being built for
 ARG TARGETPLATFORM
 
+# install terraform binaries
+# renovate: datasource=github-releases depName=hashicorp/terraform versioning=hashicorp
+ENV DEFAULT_TERRAFORM_VERSION=1.3.8
+
 # In the official Atlantis image we only have the latest of each Terraform version.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN AVAILABLE_TERRAFORM_VERSIONS="0.11.15 0.12.31 0.13.7 0.14.9 0.15.5 1.0.10 1.1.9 1.2.9 1.3.7 1.4.6 1.5.2" && \
