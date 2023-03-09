@@ -9,8 +9,8 @@ on:
       - "main"
   pull_request:
     paths:
-      - 'testing/**'
-      - '.github/workflows/testing-env-image.yml'
+      - "testing/**"
+      - ".github/workflows/testing-env-image.yml"
   workflow_dispatch:
 
 concurrency:
@@ -21,33 +21,33 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-      with:
-        image: tonistiigi/binfmt:latest
-        platforms: arm64,arm
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@0522dcd2bf084920c411162fde334a308be75015
+        with:
+          image: tonistiigi/binfmt:latest
+          platforms: arm64,arm
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@cafcc1d31fc446483a6f70920355a76c9bb40292
 
-    - name: Login to Packages Container registry
-      uses: docker/login-action@v2
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to Packages Container registry
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - run: echo "TODAY=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
-    - name: Build and push testing-env:${{env.TODAY}} image
-      uses: docker/build-push-action@v3
-      with:
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        context: testing
-        platforms: linux/arm64/v8,linux/amd64,linux/arm/v7
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: |
-           ghcr.io/runatlantis/testing-env:${{env.TODAY}}
-           ghcr.io/runatlantis/testing-env:latest
+      - run: echo "TODAY=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
+      - name: Build and push testing-env:${{env.TODAY}} image
+        uses: docker/build-push-action@a806b8fe1858aa27c1da44ef4b721a70460b75aa
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          context: testing
+          platforms: linux/arm64/v8,linux/amd64,linux/arm/v7
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/runatlantis/testing-env:${{env.TODAY}}
+            ghcr.io/runatlantis/testing-env:latest
