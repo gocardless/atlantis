@@ -79,8 +79,7 @@ type FileWorkspace struct {
 
 // Clone git clones headRepo, checks out the branch and then returns the absolute
 // path to the root of the cloned repo. It also returns
-// a boolean indicating if we should warn users that the branch we're
-// merging into has been updated since we cloned it.
+// a boolean indicating whether we had to merge with upstream again.
 // If the repo already exists and is at
 // the right commit it does nothing. This is to support running commands in
 // multiple dirs of the same repo without deleting existing plans.
@@ -94,84 +93,49 @@ func (w *FileWorkspace) Clone(
 	workspace string,
 	additionalBranches []string) (string, bool, error) {
 	cloneDir := w.cloneDir(p.BaseRepo, p, workspace)
+	hasDiverged := false
 
 	if !w.alreadyClonedHEAD(log, cloneDir, p) {
 		if err := w.forceClone(log, cloneDir, headRepo, p); err != nil {
 			return cloneDir, false, err
 		}
-	}
-
-	for _, branch := range additionalBranches {
-		if _, err := w.fetchBranch(log, cloneDir, branch); err != nil {
-			return cloneDir, false, err
+		revParseCmd := exec.Command("git", "rev-parse", pullHead) // #nosec
+		revParseCmd.Dir = cloneDir
+		outputRevParseCmd, err := revParseCmd.CombinedOutput()
+		if err != nil {
+			log.Warn("will re-clone repo, could not determine if was at correct commit: %s: %s: %s", strings.Join(revParseCmd.Args, " "), err, string(outputRevParseCmd))
+			return cloneDir, false, w.forceClone(log, cloneDir, headRepo, p)
 		}
+		currCommit := strings.Trim(string(outputRevParseCmd), "\n")
+
+		// We're prefix matching here because BitBucket doesn't give us the full
+		// commit, only a 12 character prefix.
+		if strings.HasPrefix(currCommit, p.HeadCommit) {
+			if w.CheckoutMerge && w.recheckDiverged(log, p, headRepo, cloneDir) {
+				log.Info("base branch has been updated, using merge strategy and will clone again")
+				hasDiverged = true
+			} else {
+				log.Debug("repo is at correct commit %q so will not re-clone", p.HeadCommit)
+				return cloneDir, false, nil
+			}
+		} else {
+			log.Debug("repo was already cloned but is not at correct commit, wanted %q got %q", p.HeadCommit, currCommit)
+		}
+		// We'll fall through to re-clone.
 	}
 
-	return cloneDir, w.warnDiverged(log, p, headRepo, cloneDir), nil
+	// Otherwise we clone the repo.
+	return cloneDir, hasDiverged, w.forceClone(log, cloneDir, headRepo, p)
 }
 
-// alreadyClonedHEAD determines whether the HEAD commit is already present in the cloneDir
-// repository. This can be used to determine whether we should force clone again.
-func (w *FileWorkspace) alreadyClonedHEAD(log logging.SimpleLogging, cloneDir string, p models.PullRequest) bool {
-	// If the directory isn't there or isn't readable, we cannot already be cloned
-	if _, err := os.Stat(cloneDir); err != nil {
-		return false
-	}
-
-	log.Debug("clone directory %q already exists, checking if it's at the right commit", cloneDir)
-
-	// We use git rev-parse to see if our repo is at the right commit.
-	// If just checking out the pull request branch, we can use HEAD.
-	// If doing a merge, then HEAD won't be at the pull request's HEAD
-	// because we'll already have performed a merge. Instead, we'll check
-	// HEAD^2 since that will be the commit before our merge.
-	pullHead := "HEAD"
-	if w.CheckoutMerge {
-		pullHead = "HEAD^2"
-	}
-	revParseCmd := exec.Command("git", "rev-parse", pullHead) // #nosec
-	revParseCmd.Dir = cloneDir
-	outputRevParseCmd, err := revParseCmd.CombinedOutput()
-	if err != nil {
-		log.Warn("will re-clone repo, could not determine if was at correct commit: %s: %s: %s", strings.Join(revParseCmd.Args, " "), err, string(outputRevParseCmd))
-		return false
-	}
-	currCommit := strings.Trim(string(outputRevParseCmd), "\n")
-	// We're prefix matching here because BitBucket doesn't give us the full
-	// commit, only a 12 character prefix.
-	if strings.HasPrefix(currCommit, p.HeadCommit) {
-		log.Debug("repo is at correct commit %q so will not re-clone", p.HeadCommit)
-		return true
-	}
-
-	log.Debug("repo was already cloned but is not at correct commit, wanted %q got %q", p.HeadCommit, currCommit)
-	return false
-}
-
-// fetchBranch causes the repository to fetch the most recent version of the given branch
-// in a shallow fashion. This ensures we can access files from this branch, enabling later
-// reading of files from this revision.
-func (w *FileWorkspace) fetchBranch(log logging.SimpleLogging, cloneDir, branch string) (string, error) {
-	log.Debug("fetching branch %s into repository %s", branch, cloneDir)
-
-	fetchCmd := exec.Command("git", "fetch", "--depth=1", "origin", fmt.Sprintf("+refs/heads/%s:refs/remotes/origin/%s", branch, branch))
-	fetchCmd.Dir = cloneDir
-	output, err := fetchCmd.CombinedOutput()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to fetch base branch %s: %s", branch, string(output))
-	}
-
-	return cloneDir, err
-}
-
-// warnDiverged returns true if we should warn the user that the branch we're
-// merging into has diverged from what we currently have checked out.
+// recheckDiverged returns true if the branch we're merging into has diverged
+// from what we currently have checked out.
 // This matters in the case of the merge checkout strategy because after
-// cloning the repo and doing the merge, it's possible main was updated.
-// Then users won't be getting the merge functionality they expected.
+// cloning the repo and doing the merge, it's possible main was updated
+// and we have to perform a new merge.
 // If there are any errors we return false since we prefer things to succeed
 // vs. stopping the plan/apply.
-func (w *FileWorkspace) warnDiverged(log logging.SimpleLogging, p models.PullRequest, headRepo models.Repo, cloneDir string) bool {
+func (w *FileWorkspace) recheckDiverged(log logging.SimpleLogging, p models.PullRequest, headRepo models.Repo, cloneDir string) bool {
 	if !w.CheckoutMerge {
 		// It only makes sense to warn that main has diverged if we're using
 		// the checkout merge strategy. If we're just checking out the branch,
@@ -209,13 +173,7 @@ func (w *FileWorkspace) warnDiverged(log logging.SimpleLogging, p models.PullReq
 		}
 	}
 
-	hasDiverged := w.HasDiverged(log, cloneDir)
-	if hasDiverged {
-		log.Info("remote main branch is ahead and thereby has new commits, it is recommended to pull new commits")
-	} else {
-		log.Debug("remote main branch has no new commits")
-	}
-	return hasDiverged
+	return w.HasDiverged(log, cloneDir)
 }
 
 func (w *FileWorkspace) HasDiverged(log logging.SimpleLogging, cloneDir string) bool {
