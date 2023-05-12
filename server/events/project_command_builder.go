@@ -37,6 +37,8 @@ const (
 	DefaultParallelPlanEnabled = false
 	// DefaultDeleteSourceBranchOnMerge being false is the default setting whether or not to remove a source branch on merge
 	DefaultDeleteSourceBranchOnMerge = false
+	// DefaultAbortOnExcecutionOrderFail being false is the default setting for abort on execution group failiures
+	DefaultAbortOnExcecutionOrderFail = false
 )
 
 func NewInstrumentedProjectCommandBuilder(
@@ -385,6 +387,7 @@ func (p *DefaultProjectCommandBuilder) buildAllCommandsByCfg(ctx *command.Contex
 					repoCfg.ParallelApply,
 					repoCfg.ParallelPlan,
 					verbose,
+					repoCfg.AbortOnExcecutionOrderFail,
 					p.TerraformExecutor,
 				)...)
 		}
@@ -408,10 +411,12 @@ func (p *DefaultProjectCommandBuilder) buildAllCommandsByCfg(ctx *command.Contex
 			automerge := DefaultAutomergeEnabled
 			parallelApply := DefaultParallelApplyEnabled
 			parallelPlan := DefaultParallelPlanEnabled
+			abortOnExcecutionOrderFail := DefaultAbortOnExcecutionOrderFail
 			if hasRepoCfg {
 				automerge = repoCfg.Automerge
 				parallelApply = repoCfg.ParallelApply
 				parallelPlan = repoCfg.ParallelPlan
+				abortOnExcecutionOrderFail = repoCfg.AbortOnExcecutionOrderFail
 			}
 			pCfg := p.GlobalCfg.DefaultProjCfg(ctx.Log, ctx.Pull.BaseRepo.ID(), mp.Path, pWorkspace)
 
@@ -427,6 +432,7 @@ func (p *DefaultProjectCommandBuilder) buildAllCommandsByCfg(ctx *command.Contex
 					parallelApply,
 					parallelPlan,
 					verbose,
+					abortOnExcecutionOrderFail,
 					p.TerraformExecutor,
 				)...)
 		}
@@ -735,10 +741,12 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 	automerge := DefaultAutomergeEnabled
 	parallelApply := DefaultParallelApplyEnabled
 	parallelPlan := DefaultParallelPlanEnabled
+	abortOnExcecutionOrderFail := DefaultAbortOnExcecutionOrderFail
 	if repoCfgPtr != nil {
 		automerge = repoCfgPtr.Automerge
 		parallelApply = repoCfgPtr.ParallelApply
 		parallelPlan = repoCfgPtr.ParallelPlan
+		abortOnExcecutionOrderFail = *&repoCfgPtr.AbortOnExcecutionOrderFail
 	}
 
 	if len(matchingProjects) > 0 {
@@ -763,6 +771,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 					parallelApply,
 					parallelPlan,
 					verbose,
+					abortOnExcecutionOrderFail,
 					p.TerraformExecutor,
 				)...)
 		}
@@ -786,6 +795,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectCommandCtx(ctx *command.Conte
 				parallelApply,
 				parallelPlan,
 				verbose,
+				abortOnExcecutionOrderFail,
 				p.TerraformExecutor,
 			)...)
 	}
