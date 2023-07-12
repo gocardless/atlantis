@@ -3,8 +3,7 @@
 ARG ALPINE_TAG=3.19.0
 ARG DEBIAN_TAG=12.4-slim
 
-ARG DEFAULT_TERRAFORM_VERSION=1.6.3
-ARG DEFAULT_CONFTEST_VERSION=0.46.0
+ARG DEFAULT_CONFTEST_VERSION=0.44.1
 
 # Stage 1: build artifact and download deps
 
@@ -17,8 +16,6 @@ ENV ATLANTIS_COMMIT=${ATLANTIS_COMMIT}
 ARG ATLANTIS_DATE=unknown
 ENV ATLANTIS_DATE=${ATLANTIS_DATE}
 
-ARG DEFAULT_TERRAFORM_VERSION
-ENV DEFAULT_TERRAFORM_VERSION=${DEFAULT_TERRAFORM_VERSION}
 ARG DEFAULT_CONFTEST_VERSION
 ENV DEFAULT_CONFTEST_VERSION=${DEFAULT_CONFTEST_VERSION}
 
@@ -103,14 +100,9 @@ RUN case ${TARGETPLATFORM} in \
     mv git-lfs /usr/bin/git-lfs && \
     git-lfs --version
 
-# install terraform binaries
-# renovate: datasource=github-releases depName=hashicorp/terraform versioning=hashicorp
-ARG DEFAULT_TERRAFORM_VERSION
-ENV DEFAULT_TERRAFORM_VERSION=${DEFAULT_TERRAFORM_VERSION}
-
-# In the official Atlantis image, we only have the latest of each Terraform version.
-# Each binary is about 80 MB so we limit it to the 4 latest minor releases or fewer
-RUN AVAILABLE_TERRAFORM_VERSIONS="1.3.10 1.4.6 1.5.7 ${DEFAULT_TERRAFORM_VERSION}" && \
+# In the official Atlantis image we only have the latest of each Terraform version.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN AVAILABLE_TERRAFORM_VERSIONS="0.11.15 0.12.31 0.13.7 0.14.9 0.15.5 1.0.10 1.1.9 1.2.9 1.3.7 1.4.6 1.5.2" && \
     case "${TARGETPLATFORM}" in \
         "linux/amd64") TERRAFORM_ARCH=amd64 ;; \
         "linux/arm64") TERRAFORM_ARCH=arm64 ;; \
@@ -127,7 +119,6 @@ RUN AVAILABLE_TERRAFORM_VERSIONS="1.3.10 1.4.6 1.5.7 ${DEFAULT_TERRAFORM_VERSION
         rm "terraform_${VERSION}_linux_${TERRAFORM_ARCH}.zip" && \
         rm "terraform_${VERSION}_SHA256SUMS"; \
     done
-
 
 # Stage 2 - Alpine
 # Creating the individual distro builds using targets
