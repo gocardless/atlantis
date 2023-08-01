@@ -342,7 +342,7 @@ func (p *DefaultProjectCommandBuilder) buildAllCommandsByCfg(ctx *command.Contex
 	ctx.Log.Debug("got workspace lock")
 	defer unlockFn()
 
-	repoDir, err := p.prepareWorkspace(ctx, workspace)
+	repoDir, _, err := p.WorkingDir.Clone(ctx.HeadRepo, ctx.Pull, workspace)
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +537,7 @@ func (p *DefaultProjectCommandBuilder) buildProjectPlanCommand(ctx *command.Cont
 	defer unlockFn()
 
 	ctx.Log.Debug("cloning repository")
-	_, err = p.prepareWorkspace(ctx, workspace)
+	_, _, err = p.WorkingDir.Clone(ctx.HeadRepo, ctx.Pull, workspace)
 	if err != nil {
 		return pcc, err
 	}
