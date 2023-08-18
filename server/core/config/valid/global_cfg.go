@@ -191,6 +191,7 @@ type GlobalCfgArgs struct {
 	PolicyCheckEnabled   bool
 	PreWorkflowHooks     []*WorkflowHook
 	PostWorkflowHooks    []*WorkflowHook
+	ConfigSourceBranch   *string
 }
 
 func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
@@ -252,6 +253,7 @@ func NewGlobalCfgFromArgs(args GlobalCfgArgs) GlobalCfg {
 				PolicyCheck:               &policyCheck,
 				CustomPolicyCheck:         &customPolicyCheck,
 				AutoDiscover:              &autoDiscover,
+				ConfigSourceBranch:        args.ConfigSourceBranch,
 			},
 		},
 		Workflows: map[string]Workflow{
