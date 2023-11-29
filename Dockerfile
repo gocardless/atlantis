@@ -120,6 +120,14 @@ RUN AVAILABLE_TERRAFORM_VERSIONS="0.11.15 0.12.31 0.13.7 0.14.9 0.15.5 1.0.10 1.
         rm "terraform_${VERSION}_SHA256SUMS"; \
     done
 
+# Stage TFSplit: build tfsplit binary
+FROM golang:1.21.4-alpine AS builder-tfsplit
+
+COPY ./tmp-tfsplit/ /app
+WORKDIR /app
+
+RUN CGO_ENABLED=0 go build -o /tfsplit
+
 # Stage 2 - Alpine
 # Creating the individual distro builds using targets
 FROM alpine:${ALPINE_TAG} AS alpine
@@ -184,6 +192,9 @@ COPY --from=deps /usr/local/bin/conftest /usr/local/bin/conftest
 COPY --from=deps /usr/bin/git-lfs /usr/bin/git-lfs
 # copy docker-entrypoint.sh
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+# copy temporary tf-split binary
+COPY --from=builder-tfsplit /tfsplit /usr/local/bin/tfsplit
 
 # Set the entry point to the atlantis user and run the atlantis command
 USER atlantis
