@@ -71,6 +71,7 @@ RUN AVAILABLE_CONFTEST_VERSIONS=${DEFAULT_CONFTEST_VERSION} && \
     case ${TARGETPLATFORM} in \
         "linux/amd64") CONFTEST_ARCH=x86_64 ;; \
         "linux/arm64") CONFTEST_ARCH=arm64 ;; \
+        "linux/arm64/v8") CONFTEST_ARCH=arm64 ;; \
         # There is currently no compiled version of conftest for armv7
         "linux/arm/v7") CONFTEST_ARCH=x86_64 ;; \
     esac && \
@@ -92,6 +93,7 @@ ENV GIT_LFS_VERSION=3.4.1
 RUN case ${TARGETPLATFORM} in \
         "linux/amd64") GIT_LFS_ARCH=amd64 ;; \
         "linux/arm64") GIT_LFS_ARCH=arm64 ;; \
+        "linux/arm64/v8") GIT_LFS_ARCH=arm64 ;; \
         "linux/arm/v7") GIT_LFS_ARCH=arm ;; \
     esac && \
     curl -L -s --output git-lfs.tar.gz "https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/git-lfs-linux-${GIT_LFS_ARCH}-v${GIT_LFS_VERSION}.tar.gz" && \
@@ -102,10 +104,11 @@ RUN case ${TARGETPLATFORM} in \
 
 # In the official Atlantis image we only have the latest of each Terraform version.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN AVAILABLE_TERRAFORM_VERSIONS="0.11.15 0.12.31 0.13.7 0.14.9 0.15.5 1.0.10 1.1.9 1.2.9 1.3.7 1.4.6 1.5.2" && \
+RUN AVAILABLE_TERRAFORM_VERSIONS="0.13.7 1.5.2" && \
     case "${TARGETPLATFORM}" in \
         "linux/amd64") TERRAFORM_ARCH=amd64 ;; \
         "linux/arm64") TERRAFORM_ARCH=arm64 ;; \
+        "linux/arm64/v8") TERRAFORM_ARCH=arm64 ;; \
         "linux/arm/v7") TERRAFORM_ARCH=arm ;; \
         *) echo "ERROR: 'TARGETPLATFORM' value expected: ${TARGETPLATFORM}"; exit 1 ;; \
     esac && \
