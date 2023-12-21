@@ -394,7 +394,7 @@ func (ig *importGenerator) generateProjCmds() error {
 				return tr.Type == "google_billing_budget"
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("find \"google_billing_project\" resource: %w", err)
 			}
 
 			imports[resource.Address] = billingBudgetID
@@ -403,7 +403,7 @@ func (ig *importGenerator) generateProjCmds() error {
 		case "google_project_iam_member":
 			iamResArg, legacyIamResAddr, err := ig.getIamMemberData(resource, ig.regManager)
 			if err != nil {
-				return err
+				return fmt.Errorf("find \"google_project_iam_member\" resource: %w", err)
 			}
 
 			imports[resource.Address] = iamResArg
@@ -439,10 +439,12 @@ func (ig *importGenerator) generateClusterCmds() error {
 
 			case "google_service_account":
 				svcAccID, legacySvcAccAddr, err := ig.clustersManager.getLegacyIdAddr(func(tr TfResource) bool {
-					return tr.Values.Project == hostProject && tr.Index == ns
+					// for old-style resources the index should correspond to namespace. New-style (submodule)
+					// resources don't have an index, so we check for namespace in address, if index == ""
+					return tr.Values.Project == hostProject && (tr.Index == ns || ((tr.Index == "") && strings.Contains(tr.Address, ns)))
 				})
 				if err != nil {
-					return err
+					return fmt.Errorf("find \"google_service_account\" resource: %w", err)
 				}
 
 				imports[resource.Address] = svcAccID
@@ -451,7 +453,7 @@ func (ig *importGenerator) generateClusterCmds() error {
 			case "google_project_iam_member":
 				iamResArg, legacyIamResAddr, err := ig.getCnrmIamMemberData(resource, hostProject, ns)
 				if err != nil {
-					return err
+					return fmt.Errorf("find \"google_project_iam_member\" resource: %w", err)
 				}
 
 				imports[resource.Address] = iamResArg
@@ -459,10 +461,12 @@ func (ig *importGenerator) generateClusterCmds() error {
 
 			case "google_service_account_iam_policy":
 				policyArg, legacyPolicyAddr, err := ig.clustersManager.getLegacyIdAddr(func(tr TfResource) bool {
-					return tr.Type == "google_service_account_iam_policy" && tr.Index == ns && strings.Contains(tr.Values.ID, hostProject)
+					// for old-style resources the index should correspond to namespace. New-style (submodule)
+					// resources don't have an index, so we check for namespace in address, if index == ""
+					return tr.Type == "google_service_account_iam_policy" && (tr.Index == ns || ((tr.Index == "") && strings.Contains(tr.Address, ns))) && strings.Contains(tr.Values.ID, hostProject)
 				})
 				if err != nil {
-					return err
+					return fmt.Errorf("find \"google_service_account_iam_policy\" resource: %w", err)
 				}
 
 				imports[resource.Address] = policyArg
@@ -511,7 +515,9 @@ func (ig *importGenerator) getCnrmIamMemberData(resource TfResource, hostProject
 	role := resource.Values.Role
 
 	legacyRes := resFilterFunc(ig.clustersManager.resources, func(tr TfResource) bool {
-		return (tr.Values.Project == ig.projectID) && (tr.Values.Role == role) && (tr.Index == namespace) && strings.Contains(tr.Values.ID, hostProject)
+		// for old-style resources the index should correspond to namespace. New-style (submodule)
+		// resources don't have an index, so we check for namespace in address, if index == ""
+		return (tr.Values.Project == ig.projectID) && (tr.Values.Role == role) && (tr.Index == namespace || ((tr.Index == "") && strings.Contains(tr.Address, namespace))) && strings.Contains(tr.Values.ID, hostProject)
 	})
 	if len(legacyRes) != 1 {
 		return "", "", fmt.Errorf("Expected 1 resource with role=%s, namespace=%s, hostProject=%s, but found: %v", role, namespace, hostProject, len(legacyRes))
@@ -533,8 +539,12 @@ func getRegProjResources(projectID string, regState *TfState) []TfResource {
 	})
 }
 
+// getClustersProjResources takes a target project ID, and a pointer to Terraform state
+// object, and returns a list of Terraform resources belonging to this target project.
+// This is meant to generate to-be-removed resources in clusters legacy project,
+// which should be removed from the state as part of the migration.
 func getClustersProjResources(projectID string, state *TfState) []TfResource {
-	var ret []TfResource
+	var ret, retSubmod []TfResource
 	for _, module := range state.Values.RootModule.ChildModules {
 		// only gke_cluster_project modules contain the cnrm resources
 		if strings.Contains(module.Address, "gke_cluster_project") {
@@ -545,15 +555,54 @@ func getClustersProjResources(projectID string, state *TfState) []TfResource {
 			})
 
 			// loop over namespaces - collect all resources with the same index as
-			// the one we know for sure belongs to our project
+			// the one we know for sure belongs to our project. Only collect cnrm_system resources.
 			for _, res := range resWithProj {
 				ret = append(ret, resFilterFunc(module.Resources, func(tr TfResource) bool {
-					return tr.Index == res.Index
+					return tr.Index == res.Index && tr.Name == "cnrm_system"
 				})...)
 			}
+
+			retSubmod = append(retSubmod, getCnrmSubmoduleResources(projectID, module.ChildModules)...)
 		}
 	}
 
+	if len(ret) == 0 && len(retSubmod) == 0 {
+		fmt.Println("WARNING: no CNRM resources found in clusters project!")
+	}
+	if len(ret) > 0 {
+		fmt.Printf("%d CNRM resources found without submodule pattern.\n", countRes(ret))
+	}
+	if len(retSubmod) > 0 {
+		fmt.Printf("%d CNRM resources found with new submodule pattern.\n", countRes(retSubmod))
+	}
+
+	ret = append(ret, retSubmod...)
+
+	return ret
+}
+
+// getCnrmSubmoduleResources takes a Project ID and a list of submodules, and
+// returns a list of Terraform resources which correlate to this Target Project ID.
+// It is meant to filter resources to be removed from clusters project, once we use
+// a submodule to define Config-Connector related namespace IAM mappings.
+func getCnrmSubmoduleResources(projectID string, submodules []TfModule) []TfResource {
+	var ret []TfResource
+	for _, module := range submodules {
+		if !strings.Contains(module.Address, "cnrm_namespace_mappings") {
+			continue
+		}
+
+		// search if this submodule belongs to this project
+		resWithProj := resFilterFunc(module.Resources, func(tr TfResource) bool {
+			return tr.Values.Project == projectID && tr.Type == "google_project_iam_member" && tr.Name == "cnrm_system"
+		})
+
+		// if any resource is found, all resources from this submodule belong to this project
+		if len(resWithProj) > 0 {
+			ret = append(ret, module.Resources...)
+			fmt.Printf("Added %d resources from submodule address %s for deletion from clusters project", len(module.Resources), module.Address)
+		}
+	}
 	return ret
 }
 
