@@ -21,7 +21,11 @@ func main() {
 	targetProjID := conf.svcPlan.getProjectID()
 
 	fmt.Println("\nInitializing import generator and parsing service plan...")
-	importGen := newImportGenerator(*conf.svcTfConf, conf.svcPlan)
+	importGen, err := newImportGenerator(*conf.svcTfConf, conf.svcPlan)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	if len(importGen.projectResources) > 0 && !conf.skipRegistry {
 		fmt.Println("\nGenerating GCP project related stuff...")
@@ -277,14 +281,24 @@ func countRes(list []TfResource) int {
 	}))
 }
 
-func newImportGenerator(svcTfConfig tfParams, plan *TfPlan) importGenerator {
+func newImportGenerator(svcTfConfig tfParams, plan *TfPlan) (importGenerator, error) {
 	ret := importGenerator{
 		tfConfig:        svcTfConfig,
 		regManager:      nil,
 		clustersManager: nil,
 	}
 
-	ret.projectResources, ret.projectID = getPlannedProjResources(plan)
+	// we use an error variable because the result might still be useful even
+	// if there is an error.
+	var retErr error
+	retErr = nil
+
+	ret.projectID = plan.getProjectID()
+	if ret.projectID == "" {
+		retErr = fmt.Errorf("construct import generator: could not extract target project ID")
+	}
+
+	ret.projectResources = getPlannedProjResources(plan)
 	fmt.Printf("Ingested %d planned project resources.\n", countRes(ret.projectResources))
 	ret.cnrmResources = getPlannedCnrmResources(plan)
 	totalCnrmRes := 0
@@ -293,7 +307,7 @@ func newImportGenerator(svcTfConfig tfParams, plan *TfPlan) importGenerator {
 	}
 	fmt.Printf("Ingested %d planned cnrm resources in %d namespaces.\n", totalCnrmRes, len(ret.cnrmResources))
 
-	return ret
+	return ret, retErr
 }
 
 // generateCmds generates import/deletion commands for modules which are present in the plan
@@ -430,7 +444,7 @@ func (ig *importGenerator) generateClusterCmds() error {
 			return tr.Type == "google_service_account"
 		})
 		if len(svcAccounts) != 1 {
-			return fmt.Errorf("Expected to find 1 service account in cnrm namespace %s, but found %v", ns, len(svcAccounts))
+			return fmt.Errorf("Expected to find 1 service account in cnrm namespace %s, but found %d", ns, len(svcAccounts))
 		}
 		hostProject := svcAccounts[0].Values.Project
 
@@ -502,7 +516,7 @@ func (ig *importGenerator) getIamMemberData(resource TfResource, legacyMan *lega
 		return (tr.Values.Project == ig.projectID) && (tr.Values.Role == role) && (tr.Values.Member == member)
 	})
 	if len(legacyRes) != 1 {
-		return "", "", fmt.Errorf("Expected 1 resource with member=%s; role=%s, but found: %v", member, role, len(legacyRes))
+		return "", "", fmt.Errorf("Expected 1 resource with member=%s; role=%s, but found: %d", member, role, len(legacyRes))
 	}
 
 	return importArg, legacyRes[0].Address, nil
@@ -520,7 +534,7 @@ func (ig *importGenerator) getCnrmIamMemberData(resource TfResource, hostProject
 		return (tr.Values.Project == ig.projectID) && (tr.Values.Role == role) && (tr.Index == namespace || ((tr.Index == "") && strings.Contains(tr.Address, namespace))) && strings.Contains(tr.Values.ID, hostProject)
 	})
 	if len(legacyRes) != 1 {
-		return "", "", fmt.Errorf("Expected 1 resource with role=%s, namespace=%s, hostProject=%s, but found: %v", role, namespace, hostProject, len(legacyRes))
+		return "", "", fmt.Errorf("Expected 1 resource with role=%s, namespace=%s, hostProject=%s, but found: %d", role, namespace, hostProject, len(legacyRes))
 	}
 	importArg := fmt.Sprintf("%s %s %s", ig.projectID, role, legacyRes[0].Values.Member)
 
@@ -606,13 +620,13 @@ func getCnrmSubmoduleResources(projectID string, submodules []TfModule) []TfReso
 	return ret
 }
 
-func getPlannedProjResources(plan *TfPlan) ([]TfResource, string) {
+func getPlannedProjResources(plan *TfPlan) ([]TfResource) {
 	for _, module := range plan.PlannedValues.RootModule.ChildModules {
 		if module.Address == "module.google_project[0]" {
-			return module.Resources, plan.getProjectID()
+			return module.Resources
 		}
 	}
-	return nil, ""
+	return nil
 }
 
 func getPlannedCnrmResources(plan *TfPlan) map[string][]TfResource {
