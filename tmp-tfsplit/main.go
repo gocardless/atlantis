@@ -27,6 +27,11 @@ func main() {
 		return
 	}
 
+	// DANGEROUS - allow importing resources where we couldn't find corresponding deletion resource
+	if conf.allowPartial {
+		importGen.AllowPartial = true
+	}
+
 	if len(importGen.projectResources) > 0 && !conf.skipRegistry {
 		fmt.Println("\nGenerating GCP project related stuff...")
 		if !conf.skipInit {
@@ -252,7 +257,7 @@ func (tfMan *legacyTfManager) doDeletions(dryRun bool) {
 func (tfMan *legacyTfManager) getLegacyIdAddr(filter func(tr TfResource) bool) (string, string, error) {
 	serviceAccounts := resFilterFunc(tfMan.resources, filter)
 	if len(serviceAccounts) != 1 {
-		return "", "", fmt.Errorf("Expected 1 filtered resource, found: %v", len(serviceAccounts))
+		return "", "", fmt.Errorf("Expected 1 filtered resource, found: %v\n", len(serviceAccounts))
 	}
 
 	return serviceAccounts[0].Values.ID, serviceAccounts[0].Address, nil
@@ -273,6 +278,9 @@ type importGenerator struct {
 	clustersManager *legacyTfManager
 
 	projectID string
+
+	// DANGEROUS - allow importing resources where we couldn't find corresponding deletion resource
+	AllowPartial bool
 }
 
 func countRes(list []TfResource) int {
@@ -286,6 +294,7 @@ func newImportGenerator(svcTfConfig tfParams, plan *TfPlan) (importGenerator, er
 		tfConfig:        svcTfConfig,
 		regManager:      nil,
 		clustersManager: nil,
+		AllowPartial:    false,
 	}
 
 	// we use an error variable because the result might still be useful even
@@ -408,7 +417,11 @@ func (ig *importGenerator) generateProjCmds() error {
 				return tr.Type == "google_billing_budget"
 			})
 			if err != nil {
-				return fmt.Errorf("find \"google_billing_project\" resource: %w", err)
+				if !ig.AllowPartial {
+					return fmt.Errorf("find \"google_billing_project\" resource: %w", err)
+				}
+				fmt.Printf("WARNING! Could not find \"google_billing_project\" resource for deletion: %s\nContinuing anyway due to -allow-partial flag.\n", err)
+				break
 			}
 
 			imports[resource.Address] = billingBudgetID
@@ -417,7 +430,11 @@ func (ig *importGenerator) generateProjCmds() error {
 		case "google_project_iam_member":
 			iamResArg, legacyIamResAddr, err := ig.getIamMemberData(resource, ig.regManager)
 			if err != nil {
-				return fmt.Errorf("find \"google_project_iam_member\" resource: %w", err)
+				if !ig.AllowPartial {
+					return fmt.Errorf("find \"google_project_iam_member\" resource: %w", err)
+				}
+				fmt.Printf("WARNING! Could not find \"google_project_iam_member\" resource for deletion: %s\nContinuing anyway due to -allow-partial flag.\n", err)
+				break
 			}
 
 			imports[resource.Address] = iamResArg
@@ -458,7 +475,11 @@ func (ig *importGenerator) generateClusterCmds() error {
 					return tr.Values.Project == hostProject && (tr.Index == ns || ((tr.Index == "") && strings.Contains(tr.Address, ns)))
 				})
 				if err != nil {
-					return fmt.Errorf("find \"google_service_account\" resource: %w", err)
+					if !ig.AllowPartial {
+						return fmt.Errorf("find \"google_service_account\" resource: %w", err)
+					}
+					fmt.Printf("WARNING! Could not find \"google_service_account\" resource for deletion: %s\nContinuing anyway due to -allow-partial flag.\n", err)
+					break
 				}
 
 				imports[resource.Address] = svcAccID
@@ -467,7 +488,11 @@ func (ig *importGenerator) generateClusterCmds() error {
 			case "google_project_iam_member":
 				iamResArg, legacyIamResAddr, err := ig.getCnrmIamMemberData(resource, hostProject, ns)
 				if err != nil {
-					return fmt.Errorf("find \"google_project_iam_member\" resource: %w", err)
+					if !ig.AllowPartial {
+						return fmt.Errorf("find \"google_project_iam_member\" resource: %w", err)
+					}
+					fmt.Printf("WARNING! Could not find \"google_project_iam_member\" resource for deletion: %s\nContinuing anyway due to -allow-partial flag.\n", err)
+					break
 				}
 
 				imports[resource.Address] = iamResArg
@@ -480,7 +505,11 @@ func (ig *importGenerator) generateClusterCmds() error {
 					return tr.Type == "google_service_account_iam_policy" && (tr.Index == ns || ((tr.Index == "") && strings.Contains(tr.Address, ns))) && strings.Contains(tr.Values.ID, hostProject)
 				})
 				if err != nil {
-					return fmt.Errorf("find \"google_service_account_iam_policy\" resource: %w", err)
+					if !ig.AllowPartial {
+						return fmt.Errorf("find \"google_service_account_iam_policy\" resource: %w", err)
+					}
+					fmt.Printf("WARNING! Could not find \"google_service_account_iam_policy\" resource for deletion: %s\nContinuing anyway due to -allow-partial flag.\n", err)
+					break
 				}
 
 				imports[resource.Address] = policyArg
@@ -516,7 +545,7 @@ func (ig *importGenerator) getIamMemberData(resource TfResource, legacyMan *lega
 		return (tr.Values.Project == ig.projectID) && (tr.Values.Role == role) && (tr.Values.Member == member)
 	})
 	if len(legacyRes) != 1 {
-		return "", "", fmt.Errorf("Expected 1 resource with member=%s; role=%s, but found: %d", member, role, len(legacyRes))
+		return "", "", fmt.Errorf("Expected 1 resource with member=%s; role=%s, but found: %d\n", member, role, len(legacyRes))
 	}
 
 	return importArg, legacyRes[0].Address, nil
@@ -534,7 +563,7 @@ func (ig *importGenerator) getCnrmIamMemberData(resource TfResource, hostProject
 		return (tr.Values.Project == ig.projectID) && (tr.Values.Role == role) && (tr.Index == namespace || ((tr.Index == "") && strings.Contains(tr.Address, namespace))) && strings.Contains(tr.Values.ID, hostProject)
 	})
 	if len(legacyRes) != 1 {
-		return "", "", fmt.Errorf("Expected 1 resource with role=%s, namespace=%s, hostProject=%s, but found: %d", role, namespace, hostProject, len(legacyRes))
+		return "", "", fmt.Errorf("Expected 1 resource with role=%s, namespace=%s, hostProject=%s, but found: %d\n", role, namespace, hostProject, len(legacyRes))
 	}
 	importArg := fmt.Sprintf("%s %s %s", ig.projectID, role, legacyRes[0].Values.Member)
 
@@ -620,7 +649,7 @@ func getCnrmSubmoduleResources(projectID string, submodules []TfModule) []TfReso
 	return ret
 }
 
-func getPlannedProjResources(plan *TfPlan) ([]TfResource) {
+func getPlannedProjResources(plan *TfPlan) []TfResource {
 	for _, module := range plan.PlannedValues.RootModule.ChildModules {
 		if module.Address == "module.google_project[0]" {
 			return module.Resources

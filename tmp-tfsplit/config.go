@@ -57,6 +57,9 @@ type config struct {
 
 	skipRegistry bool
 	skipClusters bool
+
+	// DANGEROUS - allow importing resources where we couldn't find corresponding deletion resource
+	allowPartial bool
 }
 
 func parseConfig() (*config, error) {
@@ -91,6 +94,7 @@ func parseConfig() (*config, error) {
 	flag.BoolVar(&c.skipInit, "skip-init", false, "Skip Terraform initializations (must be initialized before)")
 	flag.BoolVar(&c.skipRegistry, "skip-registry", false, "Skip any changes related to legacy Registry project")
 	flag.BoolVar(&c.skipClusters, "skip-clusters", false, "Skip any changes related to legacy Clusters project")
+	flag.BoolVar(&c.allowPartial, "allow-partial", false, "DANGEROUS - Allow partial imports when some of resources couldn't be correlated with deletable resources.")
 	flag.Parse()
 
 	if len(flag.Args()) != 2 {
