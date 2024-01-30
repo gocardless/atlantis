@@ -19,7 +19,7 @@ func (plan *TfPlan) getProjectID() string {
 			}
 
 			// from cnrm_iam module, we can extract the target project ID only from one resource
-		} else if strings.Contains(module.Address, "cnrm_iam") {
+		} else if strings.Contains(module.Address, "module.cnrm_iam") || strings.Contains(module.Address, "module.config_connector_iam") {
 			projIamMembers := resFilterFunc(module.Resources, func(tr TfResource) bool {
 				return tr.Type == "google_project_iam_member"
 			})

@@ -637,13 +637,13 @@ func getCnrmSubmoduleResources(projectID string, submodules []TfModule) []TfReso
 
 		// search if this submodule belongs to this project
 		resWithProj := resFilterFunc(module.Resources, func(tr TfResource) bool {
-			return tr.Values.Project == projectID && tr.Type == "google_project_iam_member" && tr.Name == "cnrm_system"
+			return tr.Values.Project == projectID && tr.Type == "google_project_iam_member"
 		})
 
 		// if any resource is found, all resources from this submodule belong to this project
 		if len(resWithProj) > 0 {
 			ret = append(ret, module.Resources...)
-			fmt.Printf("Added %d resources from submodule address %s for deletion from clusters project", len(module.Resources), module.Address)
+			fmt.Printf("Added %d resources from submodule address %s for deletion from clusters project\n", countRes(module.Resources), module.Address)
 		}
 	}
 	return ret
@@ -661,7 +661,7 @@ func getPlannedProjResources(plan *TfPlan) []TfResource {
 func getPlannedCnrmResources(plan *TfPlan) map[string][]TfResource {
 	ret := make(map[string][]TfResource)
 	for _, module := range plan.PlannedValues.RootModule.ChildModules {
-		if strings.Contains(module.Address, "module.cnrm_iam") {
+		if strings.Contains(module.Address, "module.cnrm_iam") || strings.Contains(module.Address, "module.config_connector_iam") {
 			namespace := strings.Split(module.Address, "\"")[1]
 			ret[namespace] = module.Resources
 		}
