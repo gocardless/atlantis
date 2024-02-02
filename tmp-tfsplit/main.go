@@ -472,7 +472,8 @@ func (ig *importGenerator) generateClusterCmds() error {
 				svcAccID, legacySvcAccAddr, err := ig.clustersManager.getLegacyIdAddr(func(tr TfResource) bool {
 					// for old-style resources the index should correspond to namespace. New-style (submodule)
 					// resources don't have an index, so we check for namespace in address, if index == ""
-					return tr.Values.Project == hostProject && (tr.Index == ns || ((tr.Index == "") && strings.Contains(tr.Address, ns)))
+					return tr.Values.Project == hostProject &&
+						(tr.Index == ns || ((tr.Index == "") && strings.Contains(tr.Address, fmt.Sprintf("[\"%s\"]", ns))))
 				})
 				if err != nil {
 					if !ig.AllowPartial {
@@ -502,7 +503,9 @@ func (ig *importGenerator) generateClusterCmds() error {
 				policyArg, legacyPolicyAddr, err := ig.clustersManager.getLegacyIdAddr(func(tr TfResource) bool {
 					// for old-style resources the index should correspond to namespace. New-style (submodule)
 					// resources don't have an index, so we check for namespace in address, if index == ""
-					return tr.Type == "google_service_account_iam_policy" && (tr.Index == ns || ((tr.Index == "") && strings.Contains(tr.Address, ns))) && strings.Contains(tr.Values.ID, hostProject)
+					return tr.Type == "google_service_account_iam_policy" &&
+						(tr.Index == ns || ((tr.Index == "") && strings.Contains(tr.Address, fmt.Sprintf("[\"%s\"]", ns)))) &&
+						strings.Contains(tr.Values.ID, hostProject)
 				})
 				if err != nil {
 					if !ig.AllowPartial {
@@ -560,7 +563,10 @@ func (ig *importGenerator) getCnrmIamMemberData(resource TfResource, hostProject
 	legacyRes := resFilterFunc(ig.clustersManager.resources, func(tr TfResource) bool {
 		// for old-style resources the index should correspond to namespace. New-style (submodule)
 		// resources don't have an index, so we check for namespace in address, if index == ""
-		return (tr.Values.Project == ig.projectID) && (tr.Values.Role == role) && (tr.Index == namespace || ((tr.Index == "") && strings.Contains(tr.Address, namespace))) && strings.Contains(tr.Values.ID, hostProject)
+		return ((tr.Values.Project == ig.projectID) &&
+			(tr.Values.Role == role) &&
+			(tr.Index == namespace || ((tr.Index == "") && strings.Contains(tr.Address, fmt.Sprintf("[\"%s\"]", namespace)))) &&
+			strings.Contains(tr.Values.ID, hostProject))
 	})
 	if len(legacyRes) != 1 {
 		return "", "", fmt.Errorf("Expected 1 resource with role=%s, namespace=%s, hostProject=%s, but found: %d\n", role, namespace, hostProject, len(legacyRes))
