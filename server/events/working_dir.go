@@ -128,7 +128,18 @@ func (w *FileWorkspace) Clone(
 		outputRevParseCmd, err := revParseCmd.CombinedOutput()
 		if err != nil {
 			w.Logger.Warn("will re-clone repo, could not determine if was at correct commit: %s: %s: %s", strings.Join(revParseCmd.Args, " "), err, string(outputRevParseCmd))
-			return cloneDir, false, w.forceClone(c)
+
+			if err := w.forceClone(c); err != nil {
+				return cloneDir, false, err
+			}
+
+			for _, branch := range additionalBranches {
+				if _, err := w.fetchBranch(cloneDir, branch); err != nil {
+					return cloneDir, false, err
+				}
+			}
+
+			return cloneDir, false, nil
 		}
 		currCommit := strings.Trim(string(outputRevParseCmd), "\n")
 
@@ -147,6 +158,7 @@ func (w *FileWorkspace) Clone(
 		// We'll fall through to re-clone.
 	}
 
+	// Otherwise we clone the repo.
 	if err := w.forceClone(c); err != nil {
 		return cloneDir, false, err
 	}
@@ -157,7 +169,6 @@ func (w *FileWorkspace) Clone(
 		}
 	}
 
-	// Otherwise we clone the repo.
 	return cloneDir, false, nil
 }
 
