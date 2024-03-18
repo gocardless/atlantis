@@ -6,7 +6,7 @@ ARG DEBIAN_TAG=12.13-slim@sha256:67b30a61dc87758f0caf819646104f29ecbda97d920aaf5
 ARG GOLANG_TAG=1.25.8-alpine@sha256:8e02eb337d9e0ea459e041f1ee5eece41cbb61f1d83e7d883a3e2fb4862063fa
 
 # renovate: datasource=github-releases depName=hashicorp/terraform versioning=hashicorp
-ARG DEFAULT_TERRAFORM_VERSION=1.14.9
+ARG DEFAULT_TERRAFORM_VERSION=1.7.5
 # renovate: datasource=github-releases depName=opentofu/opentofu versioning=hashicorp
 ARG DEFAULT_OPENTOFU_VERSION=1.11.6
 # renovate: datasource=github-releases depName=open-policy-agent/conftest
@@ -27,8 +27,6 @@ ENV ATLANTIS_COMMIT=${ATLANTIS_COMMIT}
 ARG ATLANTIS_DATE=unknown
 ENV ATLANTIS_DATE=${ATLANTIS_DATE}
 
-ARG DEFAULT_TERRAFORM_VERSION
-ENV DEFAULT_TERRAFORM_VERSION=${DEFAULT_TERRAFORM_VERSION}
 ARG DEFAULT_CONFTEST_VERSION
 ENV DEFAULT_CONFTEST_VERSION=${DEFAULT_CONFTEST_VERSION}
 
@@ -153,7 +151,7 @@ RUN ./download-release.sh \
         "terraform" \
         "${TARGETPLATFORM}" \
         "${DEFAULT_TERRAFORM_VERSION}" \
-        "0.12.31 0.13.7 1.3.7 1.4.6 1.5.2 1.7.5 ${DEFAULT_TERRAFORM_VERSION}" \
+        "0.12.31 0.13.7 1.3.7 1.4.6 1.5.2 ${DEFAULT_TERRAFORM_VERSION}" \
     && ./download-release.sh \
         "tofu" \
         "${TARGETPLATFORM}" \
