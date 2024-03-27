@@ -60,6 +60,12 @@ func (a *ApplyStepRunner) Run(ctx command.ProjectContext, extraArgs []string, pa
 			ctx.Log.Warn("failed to delete planfile after successful apply: %s", removeErr)
 		}
 	}
+	// PDFR-35744: if apply fails due to GCP access token expiration, extend
+	// the error message to prompt the user to re-plan.
+	if strings.Contains(err.Error(), "ACCESS_TOKEN_EXPIRED") {
+		err = errors.Wrap(err, "\nPlease re-plan to refresh the token and re-apply.")
+	}
+
 	return out, err
 }
 
