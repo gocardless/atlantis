@@ -212,6 +212,16 @@ func (a *APIController) apiParseAndValidate(r *http.Request) (*APIRequest, *comm
 		return nil, nil, http.StatusForbidden, fmt.Errorf("repo not allowlisted")
 	}
 
+	// TODO: Fetch the real status
+	// INC-5131: In the meantime, assume that the PR has been approved
+	fakePullRequestStatus := models.PullReqStatus {
+		// XXX: What do we put in here?
+		ApprovalStatus: models.ApprovalStatus{
+			IsApproved: true,
+		},
+		Mergeable: true,
+	}
+
 	return &request, &command.Context{
 		HeadRepo: baseRepo,
 		Pull: models.PullRequest{
@@ -221,6 +231,7 @@ func (a *APIController) apiParseAndValidate(r *http.Request) (*APIRequest, *comm
 			HeadCommit: request.Ref,
 			BaseRepo:   baseRepo,
 		},
+		PullRequestStatus: fakePullRequestStatus,
 		Scope: a.Scope,
 		Log:   a.Logger,
 	}, http.StatusOK, nil
