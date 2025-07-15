@@ -52,11 +52,12 @@ RUN apt-get update && \
         openssh-server \
         dumb-init \
         gnupg \
+        make \
         openssl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-FROM debian-base as deps
+    FROM debian-base as deps
 
 # Get the architecture the image is being built for
 ARG TARGETPLATFORM
