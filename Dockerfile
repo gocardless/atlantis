@@ -53,6 +53,7 @@ RUN apt-get update && \
         dumb-init \
         gnupg \
         make \
+        gh \
         openssl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
